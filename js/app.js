@@ -1,5 +1,27 @@
 // @TODO: YOUR CODE HERE!
-var svgWidth = 960;
+
+// Retrieve data from the CSV file and execute everything below
+d3.csv('assets/data/data.csv').then(function(phData) {
+
+  var state = ['state'];
+  var abbr = ['abbr'];
+  var poverty = ['poverty'];
+  var healthcare = ['healthcare'];
+
+  // parse data (.hair_length > poverty, (Y-axis).num_hits > healthcare,.num_albums > )
+  phData.forEach(function(row) {
+    state.push(row['state']);
+    abbr.push(row['abbr']);
+    poverty.push(row['poverty']);
+    healthcare.push(row['healthcare']);
+  })
+
+  console.log('state', state);
+  console.log('abbr', abbr);
+  console.log('poverty', poverty);
+  console.log('healthcare', healthcare);
+
+var svgWidth = 700;
 var svgHeight = 500;
 
 var margin = {
@@ -15,7 +37,7 @@ var height = svgHeight - margin.top - margin.bottom;
 // Create an SVG wrapper, append an SVG group that will hold our chart,
 // and shift the latter by left and top margins.
 var svg = d3
-  .select(".chart")
+  .select("#scatter")  
   .append("svg")
   .attr("width", svgWidth)
   .attr("height", svgHeight);
@@ -28,13 +50,12 @@ var chartGroup = svg.append("g")
 var chosenXAxis = "poverty";
 
 // function used for updating x-scale var upon click on axis label ('hairData' previously; now 'povertyData')
-// WASN'T WORKING?? 230948234823859435function xScale(povertyData, chosenXAxis) {
-  function xScale(data, chosenXAxis) {
+  function xScale(phData, chosenXAxis) {
   // create scales
   var xLinearScale = d3.scaleLinear()
-    .domain([d3.min(povertyData, d => d[chosenXAxis]) * 0.8,
+    .domain([d3.min(phData, d => d[chosenXAxis]) * 0.8,
     //FORMERLY: d3.max(povertyData,)
-      d3.max(data, d => d[chosenXAxis]) * 1.2
+      d3.max(phData, d => d[chosenXAxis]) * 1.2
     ])
     .range([0, width]);
 
@@ -69,9 +90,6 @@ function updateToolTip(chosenXAxis, circlesGroup) {
 
   if (chosenXAxis === "poverty") {
     var label = "Poverty:";
-  // }
-  // else {
-  //   var label = "Income:";
   }
   
   // {d.rockband} previously; now 'state'
@@ -84,34 +102,23 @@ function updateToolTip(chosenXAxis, circlesGroup) {
 
   circlesGroup.call(toolTip);
 
-  circlesGroup.on("mouseover", function(data) {
-    toolTip.show(data);
+  circlesGroup.on("mouseover", function(phData) {
+    toolTip.show(phData);
   })
     // onmouseout event
-    .on("mouseout", function(data, index) {
-      toolTip.hide(data);
+    .on("mouseout", function(phData) {
+      toolTip.hide(phData);
     });
 
   return circlesGroup;
 }
 
-// Retrieve data from the CSV file and execute everything below
-d3.csv('/assets/data/data.csv').then(function(povertyData, err) {
-  if (err) throw err;
-
-  // parse data (.hair_length > poverty, (Y-axis).num_hits > healthcare,.num_albums > )
-  povertyData.forEach(function(data) {
-    data.poverty = +data.poverty;
-    data.healthcare = +data.healthcare;
-    // data.num_albums = +data.num_albums; WAS PREVIOUSLY ANOTHER X-AXIS
-  });
-
   // xLinearScale function above csv import
-  var xLinearScale = xScale(povertyData, chosenXAxis);
+  var xLinearScale = xScale(phData, chosenXAxis);
 
   // Create y scale function
   var yLinearScale = d3.scaleLinear()
-    .domain([0, d3.max(povertyData, d => d.healthcare)])
+    .domain([0, d3.max(phData, d => d.healthcare)])
     .range([height, 0]);
 
   // Create initial axis functions
@@ -130,33 +137,25 @@ d3.csv('/assets/data/data.csv').then(function(povertyData, err) {
 
   // append initial circles
   var circlesGroup = chartGroup.selectAll("circle")
-    .data(povertyData)
+    .data(phData)
     .enter()
     .append("circle")
     .attr("cx", d => xLinearScale(d[chosenXAxis]))
     .attr("cy", d => yLinearScale(d.healthcare))
     .attr("r", 20)
-    .attr("fill", "green") //was originally PINK
+    .attr("fill", "green") 
     .attr("opacity", ".5");
 
   // Create group for  2 x- axis labels
   var labelsGroup = chartGroup.append("g")
     .attr("transform", `translate(${width / 2}, ${height + 20})`);
 
-  var hairLengthLabel = labelsGroup.append("text")
+  labelsGroup.append("text")
     .attr("x", 0)
     .attr("y", 20)
     .attr("value", "poverty") // value to grab for event listener
     .classed("active", true)
     .text("In Poverty (%)");
-
-  // OPTIONAL X-AXIS??"????"
-    //   var albumsLabel = labelsGroup.append("text")
-//     .attr("x", 0)
-//     .attr("y", 40)
-//     .attr("value", "num_albums") // value to grab for event listener
-//     .classed("inactive", true)
-//     .text("# of Albums Released");
 
   // append y axis
   chartGroup.append("text")
@@ -164,7 +163,7 @@ d3.csv('/assets/data/data.csv').then(function(povertyData, err) {
     .attr("y", 0 - margin.left)
     .attr("x", 0 - (height / 2))
     .attr("dy", "1em")
-    .classed("axis-text", true)
+    .classed("active", true)
     .text("Lacks Healthcare (%)");
 
   // updateToolTip function above csv import
@@ -182,9 +181,8 @@ d3.csv('/assets/data/data.csv').then(function(povertyData, err) {
 
         // console.log(chosenXAxis)
 
-        // functions here found above csv import
         // updates x scale for new data
-        xLinearScale = xScale(povertyData, chosenXAxis);
+        xLinearScale = xScale(phData, chosenXAxis);
 
         // updates x axis with transition
         xAxis = renderAxes(xLinearScale, xAxis);
@@ -194,23 +192,6 @@ d3.csv('/assets/data/data.csv').then(function(povertyData, err) {
 
         // updates tooltips with new info
         circlesGroup = updateToolTip(chosenXAxis, circlesGroup);
-
-        // changes classes to change bold text
-        // if (chosenXAxis === "num_albums") {
-        //   albumsLabel
-        //     .classed("active", true)
-        //     .classed("inactive", false);
-        //   hairLengthLabel
-        //     .classed("active", false)
-        //     .classed("inactive", true);
-        // }
-        // else {
-        //   albumsLabel
-        //     .classed("active", false)
-        //     .classed("inactive", true);
-        //   hairLengthLabel
-        //     .classed("active", true)
-        //     .classed("inactive", false);
         }
       });
     }).catch(function(error) {
